@@ -2,6 +2,10 @@ package com.cinema.globant.microservicesCinema.entities;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -58,7 +62,7 @@ public class Movie {
     private String originalLanguage;
 
     // original title of the movie
-    @Column(name="movie_original_title", nullable = false, length = 200)
+    @Column(name="movie_original_title", nullable = false, length = 50)
     private String originalTitle;
 
     // ColumnDefinition es si quiere forzar un tipo específico del motor sql
@@ -87,7 +91,7 @@ public class Movie {
     private LocalDateTime releaseDate;
 
     // title of the movie in local language
-    @Column(name="movie_title", nullable = false, length = 200)
+    @Column(name="movie_title", nullable = false, length = 50)
     private String title;
 
     // does the movie has video version?
@@ -105,5 +109,13 @@ public class Movie {
     // is the movie currently in theaters?
     @Column(name="movie_now_playing", nullable = false)
     private Boolean nowPlaying = false;
+
+
+    @ManyToMany(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @JoinTable(name = "movies_genres",
+            joinColumns = @JoinColumn(name = "movie_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private List<Genre> genres;
 
 }

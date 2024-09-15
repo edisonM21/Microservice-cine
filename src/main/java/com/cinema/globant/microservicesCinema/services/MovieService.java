@@ -1,14 +1,21 @@
 package com.cinema.globant.microservicesCinema.services;
 
+import com.cinema.globant.microservicesCinema.converte.MovieConverte;
+import com.cinema.globant.microservicesCinema.dto.BaseResponseDto;
 import com.cinema.globant.microservicesCinema.dto.Response;
 import com.cinema.globant.microservicesCinema.dto.Result;
+import com.cinema.globant.microservicesCinema.dto.movies.GenreRequestDto;
 import com.cinema.globant.microservicesCinema.dto.movies.MovieResponseDto;
 import com.cinema.globant.microservicesCinema.dto.movies.NewMovieRequestDto;
 import com.cinema.globant.microservicesCinema.dto.movies.UpdateMovieRequestDto;
+import com.cinema.globant.microservicesCinema.entities.Genre;
 import com.cinema.globant.microservicesCinema.entities.Movie;
 import com.cinema.globant.microservicesCinema.exceptions.MovieNotFoundException;
+import com.cinema.globant.microservicesCinema.repositories.GenreRepository;
 import com.cinema.globant.microservicesCinema.repositories.MoviesRepository;
 import jakarta.transaction.Transactional;
+
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -19,20 +26,24 @@ import org.springframework.web.client.RestTemplate;
 
 
 /**
- * Clase servicio para las operaciones CRUD de películas
+ * Service class for film CRUD operations
  */
 @Service
 // Ejercicio completar Javadoc EN INGLES
 
 public class MovieService {
 
+
+  private final GenreRepository genreRepository;
   private final MoviesRepository moviesRepository;
   private final RestTemplate restTemplate;
   private final String basePathDiscover;
   private final String key;
 
+  private  MovieConverte movieConverte;
+
   /**
-   * Constructor Inyección de dependencias
+   * dependency injection constructor
    *
    * @param moviesRepository
    * @param restTemplate
@@ -41,19 +52,22 @@ public class MovieService {
    */
   public MovieService(
       MoviesRepository moviesRepository,
+      GenreRepository genreRepository,
       RestTemplate restTemplate,
       @Value("${spring.external.service.base-url2}") String basePathDiscover,
       @Value("${spring.external.service.base-key}") String key) {
     this.moviesRepository = moviesRepository;
     this.restTemplate = restTemplate;
     this.basePathDiscover = basePathDiscover;
+    this.genreRepository = genreRepository;
     this.key = key;
   }
 
   // INICIO SERVICIOS CRUD
 
   /**
-   * buscar pelicula por ID
+   * search movie by id
+   * assumes id validation
    *
    * @param id
    * @return
@@ -63,38 +77,19 @@ public class MovieService {
     // EJERCICIO crear convertidor
     Optional<Movie> optMovie = moviesRepository.findById(id);
 
-    if (optMovie.isPresent()) {
-      Movie m = optMovie.get();
-      return
-          MovieResponseDto
-              .builder()
-              .id(m.getId())
-              .originalTitle(m.getOriginalTitle())
-              .originalLanguage(m.getOriginalLanguage())
-              .localTitle(m.getTitle())
-              .overview(m.getOverview())
-              .isForAdults(m.getAdult())
-              .nowPlaying(m.getNowPlaying())
-              .releaseDate(m.getReleaseDate())
-              .apiId(m.getApiId())
-              .hasVideo(m.getVideo())
-              .popularity(m.getPopularity())
-              .voteAverage(m.getVoteAverage())
-              .voteCount(m.getVoteCount())
-              .build();
+    MovieConverte converter = new MovieConverte();
 
-    } else {
-      throw new MovieNotFoundException(id);
+    return converter.convertToMovieResponseDtoId(optMovie);
+
     }
     // TODO: Estudiar el tema funcional en java y comprender el  funcionamiento
 //    return moviesRepository
 //        .findById(id)
 //        .orElseThrow(() -> new MovieNotFoundException(id));
-  }
 
 
   /**
-   * Devuelve todas las películas sin filtros
+   * Return all movies without filter
    *
    * @return
    */
@@ -102,131 +97,68 @@ public class MovieService {
     // Forma básica con ciclos
     // buscar lista de BD
     List<Movie> movies =  moviesRepository.findAll();
-    // armar la lista convertida
-    List<MovieResponseDto> result = new ArrayList<>();
-    // se itera y se crea lista
-    for (Movie m : movies) {
-      // Ejercicio: Usar convertidor
-      result.add(MovieResponseDto
-          .builder()
-          .id(m.getId())
-          .originalTitle(m.getOriginalTitle())
-          .originalLanguage(m.getOriginalLanguage())
-          .localTitle(m.getTitle())
-          .overview(m.getOverview())
-          .isForAdults(m.getAdult())
-          .nowPlaying(m.getNowPlaying())
-          .releaseDate(m.getReleaseDate())
-          .apiId(m.getApiId())
-          .hasVideo(m.getVideo())
-          .popularity(m.getPopularity())
-          .voteAverage(m.getVoteAverage())
-          .voteCount(m.getVoteCount())
-          .build());
-    }
-    return result;
 
+    MovieConverte converter = new MovieConverte();
 
-    // Forma funcional
-
-//    return moviesRepository
-//        .findAll()
-//        .stream()
-//        .map(m ->  MovieResponseDto
-//            .builder()
-//            .id(m.getId())
-//            .originalTitle(m.getOriginalTitle())
-//            .originalLanguage(m.getOriginalLanguage())
-//            .localTitle(m.getTitle())
-//            .overview(m.getOverview())
-//            .isForAdults(m.getAdult())
-//            .nowPlaying(m.getNowPlaying())
-//            .releaseDate(m.getReleaseDate())
-//            .apiId(m.getApiId())
-//            .hasVideo(m.getVideo())
-//            .popularity(m.getPopularity())
-//            .voteAverage(m.getVoteAverage())
-//            .voteCount(m.getVoteCount())
-//            .build())
-//        .collect(Collectors.toList());
+    return converter.convertToMovieResponseDtoList(movies);
   }
 
 
   // TODO: Tiene sentido el flag del API para saber si la película está siendo proyecteada?
   // TODO: En el modelo de BD debe crearse entidades que reflejen la proyección de una película
   // TODO: y si está en cartelera o no, podría ser con fechas de entrada y salida de cartelera de la película
-  public List<MovieResponseDto> getNowPlaying() {
-    List<Movie> movies = moviesRepository.findAllByNowPlaying(true);
-    // armar la lista convertida
-    List<MovieResponseDto> result = new ArrayList<>();
-    // se itera y se crea lista
-    for (Movie m : movies) {
-      // Ejercicio: Usar convertidor
-      result.add(MovieResponseDto
-              .builder()
-              .id(m.getId())
-              .originalTitle(m.getOriginalTitle())
-              .originalLanguage(m.getOriginalLanguage())
-              .localTitle(m.getTitle())
-              .overview(m.getOverview())
-              .isForAdults(m.getAdult())
-              .nowPlaying(m.getNowPlaying())
-              .releaseDate(m.getReleaseDate())
-              .apiId(m.getApiId())
-              .hasVideo(m.getVideo())
-              .popularity(m.getPopularity())
-              .voteAverage(m.getVoteAverage())
-              .voteCount(m.getVoteCount())
-              .build());
 
-    }
-    return result;
+  /**
+   * Returns the billboard movies
+   *
+   * @return
+   */
+  public List<MovieResponseDto> getNowPlaying() {
+
+    List<Movie> movies = moviesRepository.findAllByNowPlaying(true);
+
+    MovieConverte converter = new MovieConverte();
+
+    return converter.convertToMovieResponseDtoList(movies);
   }
+
 
   // TODO: Tiene sentido el flag del API para saber si la película está en estreno?
   // TODO: En el modelo de BD debe crearse entidades que reflejen la proyección de una película
   // TODO: y si está en cartelera o no, podría ser con fechas de entrada y salida de cartelera de la película
 
+  /**
+   * Returns the premiere movies
+   *
+   * @return
+   */
   public List<MovieResponseDto> getPremiere() {
-    List<Movie> movies = moviesRepository.findAllByNowPlaying(false);
-    // armar la lista convertida
-    List<MovieResponseDto> result = new ArrayList<>();
-    // se itera y se crea lista
-    for (Movie m : movies) {
-      // Ejercicio: Usar convertidor
-      result.add(MovieResponseDto
-              .builder()
-              .id(m.getId())
-              .originalTitle(m.getOriginalTitle())
-              .originalLanguage(m.getOriginalLanguage())
-              .localTitle(m.getTitle())
-              .overview(m.getOverview())
-              .isForAdults(m.getAdult())
-              .nowPlaying(m.getNowPlaying())
-              .releaseDate(m.getReleaseDate())
-              .apiId(m.getApiId())
-              .hasVideo(m.getVideo())
-              .popularity(m.getPopularity())
-              .voteAverage(m.getVoteAverage())
-              .voteCount(m.getVoteCount())
-              .build());
 
-    }
-    return result;
+    List<Movie> movies = moviesRepository.findAllByNowPlaying(false);
+
+    MovieConverte converter = new MovieConverte();
+
+    return converter.convertToMovieResponseDtoList(movies);
   }
 
   /**
-   * Crea una nueva película
+   * Create a new movie
    * <p>
-   * Se asume el dto ya válido y no nulo
+   * assumes dto already validated and not null
    *
    * @param dto
-   * @return Id de la nueva película creada en BD
+   * @return id of the new movie created in BD
    */
   @Transactional
   public Long createNewMovie(NewMovieRequestDto dto) {
     // conversión
     // EJERCICIO Crear convertidor con MapStruct
+
+    List<Genre> genres = new ArrayList<>();
+    for (GenreRequestDto g : dto.getGenres() ){
+      genres.add(genreRepository.findById(g.getId()).get());
+    }
+
     Movie m = Movie
         .builder()
         .adult(dto.getIsForAdults())
@@ -236,6 +168,7 @@ public class MovieService {
         .title(dto.getLocalTitle().trim()) // TODO: Pensar esquema para llevar a títulos a varios idiomas
         .overview(dto.getOverview().trim())
         .nowPlaying(dto.getNowPlaying())
+        .genres(genres)
         .releaseDate(dto.getReleaseDate())
 
         .backdropPath("")  // TODO: Revisar si realmente este campo tiene sentido
@@ -254,12 +187,13 @@ public class MovieService {
   }
 
   /**
-   * Actualiza una película existente
+   * Update a movie existing
    * <p>
-   * Se asume el dto ya válido y no nulo
+   * assumes dto already validated and not null
+   * assumes the Id already valid
    *
    * @param dto
-   * @return Id de la nueva película actualizada en BD que es el mismo del DTO
+   * @return Id of the new updated movie in BD that is the same as the DTO
    */
   @Transactional
   public Long updateMovie(UpdateMovieRequestDto dto) {
@@ -298,7 +232,9 @@ public class MovieService {
   }
 
   /**
-   * Elimina película por ID
+   * Delete movie by ID
+   * assumes the Id already valid
+   * and returns a generic response object with the delete message
    *
    * @param id
    * @return
@@ -306,10 +242,15 @@ public class MovieService {
   // TODO: Implementar borrado lógico, es decir que no se borre el registro de BD, sino haya un flag deleted y el
   // TODO: borrado sería actualizar el flag sin eliminar el dato de tabla
   @Transactional
-  public Long deleteMovie(Long id) {
+  public BaseResponseDto deleteMovie(Long id) {
     // TODO: Ver si es realmente necesario devolver el ID
-    moviesRepository.deleteById(id);
-    return id;
+      moviesRepository.deleteById(id);
+      return BaseResponseDto
+                      .builder()
+                      .code("DELETE_MOVIE")
+                      .message("Succesfully deleted movie record id= " + id)
+                      .timeStamp(LocalDateTime.now())
+                      .build();
   }
 
   // FIN SERVICIOS CRUD

@@ -27,15 +27,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 // Ejercicio completar Javadoc EN INGLES
 
+/**
+ * Controller class
+ */
+
 @RequestMapping("/cinema/v1/movie")
 public class MovieController {
   private MovieService movieService;
   private MovieRequestValidator validator;
 
-  private EntityManager entityManager;
 
   /**
-   * Constructor Inyección de dependencias
+   * dependency injection constructor
    *
    * @param movieService
    * @param validator
@@ -49,7 +52,7 @@ public class MovieController {
 
 
   /**
-   * Devuelve todas las películas
+   * Returns all movie
    *
    * @return
    */
@@ -58,18 +61,26 @@ public class MovieController {
     return ResponseEntity.ok(movieService.getAllList());
   }
 
+  /**
+   * Returns all movies in billboard
+   * @return
+   */
   @GetMapping("/nowPlaying")
   public ResponseEntity<List<MovieResponseDto>> getAllMoviesPlaying() {
     return  ResponseEntity.ok(movieService.getNowPlaying());
   }
 
+  /**
+   * Returns all movies in billboard
+   * @return
+   */
   @GetMapping("/premiere")
   public ResponseEntity<List<MovieResponseDto>> getAllPremiere() {
     return ResponseEntity.ok(movieService.getPremiere());
   }
 
   /**
-   * Devuelve película por Id
+   * Returns movie by Id
    *
    * @param id
    * @return
@@ -77,12 +88,13 @@ public class MovieController {
   @GetMapping("/get/{id}")
   public ResponseEntity<MovieResponseDto> getMovieById(@PathVariable("id") long id) {
     // si no aparece, la excepción se lanza desde el servide
+    validator.validateIdMovie(id);
     return ResponseEntity.ok(movieService.getMovieById(id));
   }
 
   /**
-   * Crea una nueva película
-   * y devuelve un objeto de respuesta genérica con el mensaje de creación
+   * Create a new movie validating all its fields
+   * and returns a generic response object with the create message
    *
    * @param movieDto
    * @return
@@ -95,8 +107,8 @@ public class MovieController {
   public ResponseEntity<BaseResponseDto> saveMovie(@RequestBody NewMovieRequestDto movieDto) {
     // Se valida la película
     validator.validateNewMovieDto(movieDto);
-    Long id = movieService.createNewMovie(movieDto);
 
+    Long id = movieService.createNewMovie(movieDto);
     // se devuelve el mensaje Ok con el id de la pelicula
     BaseResponseDto response =
         BaseResponseDto
@@ -105,7 +117,6 @@ public class MovieController {
             .message("Succesfully created movie record id= " + id)
             .timeStamp(LocalDateTime.now())
             .build();
-
     // cuando se crea exitosamente se devuelve un endpoint con estatus 201- CREATED
     // por lo general no se devuelve nada en el cuerpo
     // pero se puede ussar el cuerpo para devolver
@@ -115,8 +126,8 @@ public class MovieController {
   }
 
   /**
-   * Actualizar pelicula por ID
-   * Se devuelve mensaje generico indicando que se actualizó la película
+   * Update a new movie validating all its fields
+   * and returns a generic response object with the update message
    *
    * @param id
    * @param movieDto
@@ -126,6 +137,7 @@ public class MovieController {
   public ResponseEntity<BaseResponseDto> updateMovie(@Valid @PathVariable("id") long id, @RequestBody UpdateMovieRequestDto movieDto) {
     // Se valida la película
     movieDto.setId(id);
+
     validator.validateUpdateMovieDto(movieDto);
 
     movieService.updateMovie(movieDto);
@@ -141,7 +153,7 @@ public class MovieController {
 
     // cuando se actualiza o borra exitosamente se devuelve un endpoint con estatus 200- OK
     // por lo general no se devuelve nada en el cuerpo
-    // pero se puede ussar el cuerpo para devolver
+    // pero se puede usar el cuerpo para devolver
     // TODO: Otro código http usual a devolver es 204 - No Content, que indica que el request viene vacío
     // TODO: pero la operación fue exitosa, en este caso se devolvería un ResponseEntity vacío
     // TODO: Valorar con el grupo de Frontend si este enfoque es más viable.
@@ -150,34 +162,23 @@ public class MovieController {
   }
 
   /**
-   * Borrar pelicula por ID
-   * Se devuelve mensaje generico indicando que se actualizó la película
+   * Delete a new movie validating all its fields
+   * and returns a generic response object with the delete message
    *
    * @param id
    * @return
    */
   @DeleteMapping("/delete/{id}")
   public ResponseEntity<BaseResponseDto> deleteMovie(@Valid @PathVariable("id") long id) {
-
-    movieService.deleteMovie(id);
-
+    validator.validateIdMovie(id);
+    return ResponseEntity.ok(movieService.deleteMovie(id));
     // se devuelve el mensaje Ok con el id de la pelicula
-    BaseResponseDto response =
-        BaseResponseDto
-            .builder()
-            .code("DELETE_MOVIE")
-            .message("Succesfully deleted movie record id= " + id)
-            .timeStamp(LocalDateTime.now())
-            .build();
-
     // cuando se actualiza o borra exitosamente se devuelve un endpoint con estatus 200- OK
     // por lo general no se devuelve nada en el cuerpo
     // pero se puede ussar el cuerpo para devolver
     // TODO: Otro código http usual a devolver es 204 - No Content, que indica que el request viene vacío
     // TODO: pero la operación fue exitosa, en este caso se devolvería un ResponseEntity vacío
     // TODO: Valorar con el grupo de Frontend si este enfoque es más viable.
-    return ResponseEntity.ok(response);
-
   }
 
 
